@@ -15,7 +15,8 @@
 
 #define RX2 16
 #define TX2 17
-#define GPS_BAUD 38400
+#define GPS_BAUD 9600
+
 HardwareSerial gpsSerial(2);
 
 // -------------------- BME --------------------
@@ -175,6 +176,7 @@ static void initBME() {
 static void initGPS() {
   Serial.println("Inicializando GPS...");
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RX2, TX2);
+  delay(100);
 }
 
 // Le o stream do GPS sem travar o loop
@@ -183,6 +185,17 @@ static void feedGPS() {
     gps.encode(gpsSerial.read());
   }
 }
+static void debugGPS() {
+  Serial.println("\n=== DEBUG GPS ===");
+  Serial.print("Chars processados: ");
+  Serial.println(gps.charsProcessed());
+  Serial.print("Sentenças passadas: ");
+  Serial.println(gps.passedChecksum());
+  Serial.print("Sentenças com falha: ");
+  Serial.println(gps.failedChecksum());
+  Serial.println(gps.location.lat());
+}
+
 
 static void buildPayload(char* out, size_t outSize) {
   // -------- BME --------
@@ -193,7 +206,7 @@ static void buildPayload(char* out, size_t outSize) {
 
   // -------- GPS --------
   const bool hasFix = gps.location.isValid() && gps.location.age() < 5000;
-  const double lat =  gps.location.lat();
+  const double lat = hasFix ? gps.location.lat() : 0.0;
   const double lng = hasFix ? gps.location.lng() : 0.0;
 
   const double gpsAlt = gps.altitude.isValid() ? gps.altitude.meters() : 0.0;
@@ -289,7 +302,7 @@ static void buildPayload(char* out, size_t outSize) {
   );
 }
 static void publishTelemetry() {
-  char payload[512];
+  char payload[1024];
   buildPayload(payload, sizeof(payload));
 
   Serial.print("Publicando em ");
@@ -322,6 +335,12 @@ void setup() {
 void loop() {
   // Alimenta o parser do GPS sempre
   feedGPS();
+  // Debug a cada 10 segundos
+  static unsigned long lastDebug = 0;
+  if (millis() - lastDebug > 10000) {
+    lastDebug = millis();
+    debugGPS();
+  }
 
   if (!mqtt.connected()) reconnectMQTT();
   mqtt.loop();
