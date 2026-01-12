@@ -14,6 +14,6 @@ constexpr float SEALEVELPRESSURE_HPA = 1013.25f;
 constexpr uint32_t GPS_FIX_MAX_AGE_MS = 5000;
 
 // -------------------- Timers/Networking --------------------
-constexpr unsigned long PUB_INTERVAL_MS = 60000;
+constexpr unsigned long PUB_INTERVAL_MS = 5*60000;
 constexpr int MQTT_BUFFER_SIZE = 1024;
 constexpr uint16_t MQTT_KEEPALIVE_SEC = 60;

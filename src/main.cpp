@@ -20,6 +20,15 @@ static void buildPayload(char* out, size_t outSize) {
 
   // -------- GPS --------
   GpsSnapshot gpsData = gpsGetSnapshot();
+  char latStr[32];
+  char lngStr[32];
+  if (gpsData.hasFix) {
+    snprintf(latStr, sizeof(latStr), "%.6f", gpsData.lat);
+    snprintf(lngStr, sizeof(lngStr), "%.6f", gpsData.lng);
+  } else {
+    strcpy(latStr, "null");
+    strcpy(lngStr, "null");
+  }
 
   // -------- Network --------
   const IPAddress ip = WiFi.localIP();
@@ -55,7 +64,7 @@ static void buildPayload(char* out, size_t outSize) {
           "\"connected\":%s"
         "}"
       "},"
-      "\"bme280\":{"
+      "\"measurements\":{"
         "\"temperature\":%.2f,"
         "\"humidity\":%.2f,"
         "\"pressure\":%.2f,"
@@ -63,8 +72,8 @@ static void buildPayload(char* out, size_t outSize) {
       "},"
       "\"gps\":{"
         "\"fix\":%s,"
-        "\"lat\":%.6f,"
-        "\"lng\":%.6f,"
+        "\"lat\":%s,"
+        "\"lng\":%s,"
         "\"alt_m\":%.2f,"
         "\"sats\":%lu,"
         "\"hdop\":%.2f,"
@@ -88,7 +97,7 @@ static void buildPayload(char* out, size_t outSize) {
     netIsMQTTConnected() ? "true" : "false",
     temperature, humidity, pressure, altitude,
     gpsData.hasFix ? "true" : "false",
-    gpsData.lat, gpsData.lng,
+    latStr, lngStr,
     gpsData.alt,
     (unsigned long)gpsData.sats,
     gpsData.hdop,
@@ -151,12 +160,6 @@ void setup() {
 
 void loop() {
   gpsFeed();
-
-  static unsigned long lastDebug = 0;
-  if (millis() - lastDebug > 10000) {
-    lastDebug = millis();
-    gpsDebug();
-  }
 
   static unsigned long lastWiFiAttempt = 0;
   if (!netIsWiFiConnected()) {
