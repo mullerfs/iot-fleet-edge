@@ -12,6 +12,13 @@
 HardwareSerial gpsSerial(2);
 
 static unsigned long lastPubMs = 0;
+static unsigned long ledLastToggle = 0;
+static bool ledState = false;
+static uint8_t ledBlinkTarget = 0;
+static uint8_t ledBlinkCount = 0;
+static bool ledInPause = false;
+static const unsigned long ledBlinkIntervalMs = 150;
+static unsigned long ledPauseMs = 1000;
 
 static void buildPayload(char* out, size_t outSize) {
   // -------- BME --------
@@ -134,16 +141,70 @@ static void publishTelemetry() {
   netPublish(MQTT_TOPIC, payload, false);
 }
 
+static void setLedPattern(uint8_t target) {
+  ledBlinkTarget = target;
+  ledBlinkCount = 0;
+  ledInPause = false;
+  ledState = false;
+  ledLastToggle = millis();
+  if (target == 1) {
+    long pauseCalc = 1000 - (long)(2 * ledBlinkIntervalMs);
+    ledPauseMs = pauseCalc > 0 ? (unsigned long)pauseCalc : 0;
+  } else {
+    ledPauseMs = 1000;
+  }
+  digitalWrite(LED_PIN, LOW);
+}
+
+static void updateLedBlink(uint8_t desired) {
+  if (desired != ledBlinkTarget) {
+    setLedPattern(desired);
+  }
+  if (ledBlinkTarget == 0) {
+    return;
+  }
+
+  unsigned long now = millis();
+  if (ledInPause) {
+    if (now - ledLastToggle >= ledPauseMs) {
+      ledInPause = false;
+      ledBlinkCount = 0;
+      ledLastToggle = now;
+    }
+    return;
+  }
+
+  if (now - ledLastToggle < ledBlinkIntervalMs) {
+    return;
+  }
+
+  ledLastToggle = now;
+  if (ledState) {
+    ledState = false;
+    digitalWrite(LED_PIN, LOW);
+    ledBlinkCount++;
+    if (ledBlinkCount >= ledBlinkTarget) {
+      ledInPause = true;
+    }
+  } else {
+    ledState = true;
+    digitalWrite(LED_PIN, HIGH);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(200);
 
   Wire.begin(SDA_PIN, SCL_PIN);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
 
   gpsInit(gpsSerial);
-  if (!sensorsInitBME()) {
-    Serial.println("BME280 nao encontrado (0x76). Verifique conexoes/enderecamento.");
-    while (true) {
+  
+  if (!sensorsInitBMEAuto()) {
+    Serial.println("BME280 nao encontrado. Verifique conexoes/enderecamento.");
+     while (true) {
       gpsFeed();
       delay(1000);
     }
@@ -160,6 +221,18 @@ void setup() {
 
 void loop() {
   gpsFeed();
+
+  uint8_t desiredBlink = 0;
+  if (netIsWiFiConnected()) {
+    desiredBlink = 1;
+    if (netIsMQTTConnected()) {
+      desiredBlink = 2;
+      if (gpsGetSnapshot().hasFix) {
+        desiredBlink = 3;
+      }
+    }
+  }
+  updateLedBlink(desiredBlink);
 
   static unsigned long lastWiFiAttempt = 0;
   if (!netIsWiFiConnected()) {

@@ -11,7 +11,7 @@ void gpsInit(HardwareSerial& serial) {
   gpsSerialPtr = &serial;
   Serial.println("Inicializando GPS...");
   gpsSerialPtr->begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-  delay(100);
+  delay(2000);
 }
 
 void gpsFeed() {
