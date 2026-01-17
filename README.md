@@ -16,7 +16,6 @@ Projeto ESP32 com BME280, GPS e envio MQTT. Inclui scanner I2C automatico para d
 - ESP32 (board: esp32dev)
 - BME280 via I2C
 - Modulo GPS (UART)
-- PlatformIO
 
 ## Configuracao rapida
 1. Ajuste pinos e parametros em `include/config.h`.
@@ -25,19 +24,12 @@ Projeto ESP32 com BME280, GPS e envio MQTT. Inclui scanner I2C automatico para d
 
 ### Pinos padrao
 Veja `include/config.h`:
-- I2C: SDA 18, SCL 19
+- I2C: SDA 19, SCL 21
 - GPS: RX 16, TX 17
 - LED: GPIO 2
 
 ## Monitor Serial
 Use 115200. No boot, o scanner I2C imprime os enderecos encontrados e o endereco usado pelo BME280.
-
-## Build (PlatformIO)
-```bash
-pio run
-pio run -t upload
-pio device monitor
-```
 
 ## Licenca
 Veja o arquivo `LICENSE`.
